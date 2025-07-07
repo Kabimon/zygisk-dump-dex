@@ -1,43 +1,36 @@
-name: Build Zygisk Dump Dex   # CI 工作流名称
+name: Build Zygisk Dump Dex      # CI 名称
 
 on:
   push:
-    branches: [main]          # 推到 main 自动跑
-  pull_request:               # PR 也跑
-  workflow_dispatch:          # 允许网页手动触发
+    branches: [main]             # 推到 main 自动跑
+  pull_request:                  # PR 也跑
+  workflow_dispatch:             # 允许网页手动触发
 
 jobs:
   build:
-    name: Build Project
     runs-on: ubuntu-latest
+    name: Build Project
 
     steps:
-      # ① 克隆代码
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # ① 拉代码
+      - uses: actions/checkout@v4
 
-      # ② 安装 Rust (stable ≥1.88) + 交叉目标
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      # ② 固定到 1.87 时期 nightly  ───★ 只看这一行 ★───
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: nightly-2024-05-20                  # ← 关键：用 stable，而非 nightly-2024-05-20
+          toolchain: nightly-2024-05-20    # ★ 必须 < 2024-06-26
           target: aarch64-linux-android
           override: true
 
-      # ③ 安装构建辅助工具
-      - name: Install Just
-        run: cargo install just --locked
+      # ③ 安装构建工具
+      - run: cargo install just --locked
+      - run: cargo install cargo-ndk --locked
 
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk --locked
+      # ④ 编译 & 打包 ZIP
+      - run: just package-release          # 仓库自带 justfile
 
-      # ④ 编译并打包 Magisk 模块 ZIP
-      - name: Build project
-        run: just package-release            # 仓库自带 justfile
-
-      # ⑤ 上传产物（Artifacts 保留 90 天）
-      - name: Upload built artifact
-        uses: actions/upload-artifact@v4
+      # ⑤ 上传产物（保留 90 天）
+      - uses: actions/upload-artifact@v4
         with:
           name: zygisk-debug-zip
           path: out/zygisk-*.zip
