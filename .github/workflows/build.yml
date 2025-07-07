@@ -2,39 +2,37 @@ name: Build Zygisk Dump Dex
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-  workflow_dispatch:
+  workflow_dispatch:        # ← 为了手动 Run
 
 jobs:
   build:
-    name: Build Project
     runs-on: ubuntu-latest
+    name: Build Project
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # ① 拉代码
+      - uses: actions/checkout@v4
 
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      # ② 安装旧 nightly（务必 < 2024-06-26）
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2024-05-20   # ← 任意 1.87 时代 nightly 都行
           target: aarch64-linux-android
           override: true
 
-      - name: Install Just
-        run: cargo install just
+      # ③ 构建所需工具
+      - run: cargo install just --locked
+      - run: cargo install cargo-ndk --locked
 
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk
+      # ④ 编译 & 打包 ZIP
+      - run: just package-release
 
-      - name: Build project
-        run: just package-release
-
-      - name: Upload built artifact
-        uses: actions/upload-artifact@v4
+      # ⑤ 上传产物
+      - uses: actions/upload-artifact@v4
         with:
           name: zygisk-debug-zip
           path: out/zygisk-*.zip
           compression-level: 9
+          retention-days: 90
